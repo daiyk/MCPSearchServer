@@ -2,14 +2,18 @@ from typing import Any
 import json
 import os
 import httpx
+from bs4 import BeautifulSoup
 from mcp.server.fastmcp import FastMCP
 from dotenv import load_dotenv
 
 load_dotenv()
-First_Agent = "docs/1.0"
+SEARCH_AGENT = "docs/1.0"
+SERPER_ENDPOINT = "https://google.serper.dev/search"
+
+mcp = FastMCP("search") # initialize the FastMCP server
+
 def main():
     print("Hello from mcppythontestserver!")
-
 
 async def search_google(query: str) -> list | None:
     api_key = os.getenv("SERPER_API_KEY")
@@ -26,11 +30,11 @@ async def search_google(query: str) -> list | None:
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
-                "https://google.serper.dev/search",
+                SERPER_ENDPOINT,
                 headers=headers,
                 json=payload  # httpx will handle JSON serialization automatically
             )
-            
+            response.raise_for_status()  # Raises an error for 4xx/5xx responses
             if response.status_code == 200:
                 result = response.json()  # httpx can parse JSON directly
                 print(response.text)
@@ -41,14 +45,25 @@ async def search_google(query: str) -> list | None:
         except httpx.RequestError as e:
             print(f"An error occurred: {e}")
             return None
-
+def extract_search_result(result: list):
+    jsonResult = json.dumps(result, indent=2)
+    BeautifulSoup(jsonResult, "html.parser")
 @mcp.tool()
 async def search_tool(query: str) -> str:
+    """
+    Search Google with a give query string using the Serper API.
+    Args:
+        query (str): The search query.
+    Returns:
+        str: The search results in JSON format.
+    """
     result = await search_google(query)
-    if result:
-        return json.dumps(result, indent=2)
+    if len(result["organic"])>0:
+        searchResult = result["organic"]
+        print(json.dumps(searchResult, indent=2))
+        return searchResult
     else:
         return "No results found."
 
 if __name__ == "__main__":
-    main()
+    mcp.run(transport="stdio")
