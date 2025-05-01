@@ -45,9 +45,29 @@ async def search_google(query: str) -> list | None:
         except httpx.RequestError as e:
             print(f"An error occurred: {e}")
             return None
-def extract_search_result(result: list):
-    jsonResult = json.dumps(result, indent=2)
-    BeautifulSoup(jsonResult, "html.parser")
+async def extract_search_result(link: str):
+    """
+    Extracts the text from the search result link.
+    """
+    # visit the link and get the content
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(
+               link,
+               timeout=30,  # Set a timeout for the request
+            )
+            response.raise_for_status()  # Raises an error for 4xx/5xx responses
+            if response.status_code == 200:
+                soap = BeautifulSoup(response.text, "html.parser")
+                # Extract the text from the soup
+                return soap.get_text()
+            else:
+                print(f"Error Extract the search results: {response.status_code}")
+                return None
+        except httpx.RequestError as e:
+            print(f"An error occurred: {e}")
+            return None
+
 @mcp.tool()
 async def search_tool(query: str) -> str:
     """
@@ -60,6 +80,10 @@ async def search_tool(query: str) -> str:
     result = await search_google(query)
     if len(result["organic"])>0:
         searchResult = result["organic"]
+        # Extract the first two results
+        searchResult = searchResult[:2]
+        # extract the text from the search result
+        searchResult = extract_search_result(searchResult)
         print(json.dumps(searchResult, indent=2))
         return searchResult
     else:
