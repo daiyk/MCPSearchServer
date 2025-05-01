@@ -6,7 +6,8 @@ from mcp.server.fastmcp import FastMCP
 from dotenv import load_dotenv
 
 load_dotenv()
-First_Agent = "docs/1.0"
+USER_AGENT = "docs/1.0"
+API_BASE  = "https://google.serper.dev/search"
 def main():
     print("Hello from mcppythontestserver!")
 
@@ -26,7 +27,7 @@ async def search_google(query: str) -> list | None:
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
-                "https://google.serper.dev/search",
+                API_BASE,
                 headers=headers,
                 json=payload  # httpx will handle JSON serialization automatically
             )
